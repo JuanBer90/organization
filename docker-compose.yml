@@ -8,15 +8,17 @@ services:
       - ./backend:/app  # Allows hot reload in development
     environment:
       - DATABASE_URL=sqlite:///./employees.db
-
-  frontend:
-      build: ./frontend
-      container_name: organization_chart_frontend
-      ports:
-        - "5173:5173"  # Puerto de Vite
-      volumes:
-        - ./frontend:/app  # Allows hot reload in development
-      environment:
-        - VITE_API_URL=http://localhost:8000
-      depends_on:
-        - backend
+#
+#  frontend:
+#      build: ./frontend
+#      container_name: organization_chart_frontend
+#      ports:
+#        - "5173:5173"  # Puerto de Vite
+#      volumes:
+#        - ./frontend:/app  # Allows hot reload in development
+#        - /usr/src/app/node_modules
+#
+#      environment:
+#        - VITE_API_URL=http://localhost:8000
+#      depends_on:
+#        - backend

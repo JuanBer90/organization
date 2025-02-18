@@ -1,18 +1,20 @@
-# Use Node.js base image
+# Usa la imagen base de Node.js
 FROM node:18-alpine
 
-# Set working directory
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Copy package.json and install dependencies
+# Copia package.json y package-lock.json
 COPY package.json package-lock.json ./
-RUN npm install
 
-# Copy the rest of the application
+# Instala las dependencias de desarrollo y producción
+RUN npm install --include=dev
+
+# Copia el resto del código fuente
 COPY . .
 
-# Expose the port used by Vite
-EXPOSE 5173
+# Expone el puerto donde servirá la app (puedes cambiar este puerto si lo deseas)
+EXPOSE 3000
 
-# Start the frontend application
-CMD ["npm", "run", "dev", "--", "--host"]
+# Ejecuta TypeScript y luego ejecuta la aplicación con Node.js
+CMD ["npm", "run", "build", "&&", "node", "dist/index.js"]
