@@ -1,0 +1,20 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.navbar {
+  display: flex;
+  justify-content: center;  /* Centra el contenido horizontalmente */
+  align-items: center;      /* Centra el contenido verticalmente */
+  background-color: #333;   /* Color de fondo del navbar */
+  height: 60px;             /* Altura del navbar */
+}
+
+.navbar-title {
+  color: white;             /* Color del texto */
+  font-size: 24px;          /* Tamaño de la fuente */
+  margin: 0;                /* Elimina el margen por defecto */
+}
