@@ -1,98 +1,205 @@
 import React, { useState, useEffect } from "react";
-import { useEmployees } from "../hooks/useEmployees"; // API hook
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Box, Typography, Paper } from "@mui/material";
+import { Box, Typography, Paper, Grid } from "@mui/material";
 import EmployeeCard from "./EmployeeCard";
-import axios from "axios";
+import { useEmployees, Manager, Employee } from "../hooks/useEmployees";
+import {deleteEmployee, updateManager} from "../api";
+import { useQueryClient } from "@tanstack/react-query";
 
 const OrgChart: React.FC = () => {
-    const { data: initialManagers, isLoading } = useEmployees();
-    const [managers, setManagers] = useState(initialManagers || []);
+    const [groups, setGroups] = useState<Manager[]>([]);
+    const [independentItems, setIndependentItems] = useState<Employee[]>([]);
+    const queryClient = useQueryClient();
 
-    // Update local state when API data is available
+    const { data: items = [], isLoading, refetch } = useEmployees();
+
+
     useEffect(() => {
-        if (initialManagers) {
-            setManagers(initialManagers);
-        }
-    }, [initialManagers]);
+        const grouped: Manager[] = [];
+        const independent: Employee[] = [];
 
-    // Handle Drag & Drop logic
-    const handleDragEnd = async (result: DropResult) => {
+        items.forEach(item => {
+            if (item.employees.length > 0) {
+                grouped.push(item);
+            } else {
+                independent.push(item);
+            }
+        });
+
+        setGroups(grouped);
+        setIndependentItems(independent);
+    }, [items]);
+
+    const unAssign = async (employeeId: number) => {
+        const success = await updateManager(employeeId, null);
+        if (success){
+            await refetch();
+        }
+
+    }
+
+    const removeEmployee = async (employeeId: number) => {
+        const success = await deleteEmployee(employeeId);
+        if (success){
+            await refetch();
+        }
+
+    }
+
+
+
+    const updateManagers = async ( sourceId: number, managerId: number | null )=>{
+
+        const success = await updateManager(sourceId, managerId);
+        console.log("updated", success)
+        if (success){
+            queryClient.invalidateQueries(["managers", sourceId]); // Force refetch
+
+        }
+
+    }
+
+
+    const handleDragEnd = async (result: DropResult) =>  {
         const { source, destination } = result;
-        if (!destination) return;
+        if (!destination || source.droppableId === destination.droppableId) return;
 
-        const sourceManagerId = parseInt(source.droppableId);
-        const destManagerId = parseInt(destination.droppableId);
-        const employeeIndex = source.index;
 
-        // Find the source and destination managers
-        const sourceManager = managers.find((m) => m.id === sourceManagerId);
-        const destManager = managers.find((m) => m.id === destManagerId);
+        let movedItem: Employee | undefined;
+        let newIndependentItems = [...independentItems];
+        let newGroups = [...groups];
 
-        if (!sourceManager || !destManager) return;
-
-        // Remove employee from source
-        const movedEmployee = sourceManager.employees.splice(employeeIndex, 1)[0];
-
-        // Add employee to destination
-        destManager.employees.splice(destination.index, 0, movedEmployee);
-
-        // Update state
-        setManagers([...managers]);
-
-        // Send update to the backend
-        try {
-            await axios.put(`/api/employees/${movedEmployee.id}/manager/`, {
-                manager_id: destManager.id
-            });
-            console.log(`Updated employee ${movedEmployee.id} to manager ${destManager.id}`);
-        } catch (error) {
-            console.error("Error updating manager:", error);
+        if (source.droppableId === "items") {
+            const itemIndex = newIndependentItems.findIndex(item => item.id === parseInt(result.draggableId));
+            if (itemIndex !== -1) {
+                movedItem = newIndependentItems[itemIndex];
+                newIndependentItems.splice(itemIndex, 1);
+            }
+        } else {
+            const sourceGroupIndex = newGroups.findIndex(group => group.id === parseInt(source.droppableId));
+            if (sourceGroupIndex !== -1) {
+                const sourceGroup = newGroups[sourceGroupIndex];
+                const itemIndex = sourceGroup.employees.findIndex(item => item.id === parseInt(result.draggableId));
+                if (itemIndex !== -1) {
+                    movedItem = sourceGroup.employees[itemIndex];
+                    newGroups[sourceGroupIndex] = {
+                        ...sourceGroup,
+                        employees: sourceGroup.employees.filter((_, i) => i !== itemIndex),
+                    };
+                }
+            }
         }
-    };
 
-    if (isLoading) return <Typography>Loading...</Typography>;
+        if (!movedItem) return;
+
+        if (destination.droppableId === "new-group-zone") {
+            newGroups.push({
+                id: movedItem.id,
+                name: movedItem.name,
+                manager_id: movedItem.manager_id,
+                title: movedItem.title,
+                employees: [],
+            });
+        } else {
+            const destinationGroupIndex = newGroups.findIndex(group => group.id === parseInt(destination.droppableId));
+            if (destinationGroupIndex !== -1) {
+                newGroups[destinationGroupIndex] = {
+                    ...newGroups[destinationGroupIndex],
+                    employees: [...newGroups[destinationGroupIndex].employees, movedItem],
+                };
+                await updateManagers(movedItem.id, newGroups[destinationGroupIndex].id)
+                newIndependentItems.push(movedItem);
+            } else {
+                await updateManagers(movedItem.id, null)
+                newIndependentItems.push(movedItem);
+            }
+            await refetch();
+        }
+
+        setIndependentItems(newIndependentItems);
+        setGroups(newGroups);
+    };
 
     return (
         <DragDropContext onDragEnd={handleDragEnd}>
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", justifyContent: "center", padding: 2 }}>
-                {managers.map((manager) => (
-                    <Droppable key={manager.id} droppableId={String(manager.id)}>
+            <Grid container spacing={2}>
+
+                <Grid item xs={6}>
+                    <Droppable droppableId="items" type="item">
                         {(provided) => (
-                            <Paper
-                                ref={provided.innerRef}
-                                {...provided.droppableProps}
-                                sx={{ padding: 2, minWidth: 250, maxWidth: 300, backgroundColor: "#f8f8f8" }}
-                            >
-                                <Typography variant="h6" sx={{ fontWeight: "bold", textAlign: "center" }}>
-                                    {manager.name} - {manager.title}
-                                </Typography>
-                                {manager.employees.map((employee, index) => (
-                                    <Draggable key={employee.id} draggableId={String(employee.id)} index={index}>
+                            <Paper elevation={3} style={{ padding: 20, textAlign: "center" }}>
+                                <Typography variant="h5">Unassigned Employees</Typography>
+
+                                <Box ref={provided.innerRef} {...provided.droppableProps} sx={{ marginTop: 2, padding: 2 }}>
+                                    <Grid container spacing={2}>
+
+                                        {independentItems.map((item, index) => (
+                                            <Grid item xs={6}>
+
+                                                <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
+                                                    {(provided) => (
+                                                        <Box ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} >
+                                                            <EmployeeCard onDelete={(employeeId: number)=>{removeEmployee(employeeId)}}  key={item.id} employee={item}/>
+                                                        </Box>
+                                                    )}
+                                                </Draggable>
+                                            </Grid>
+
+                                        ))}
+                                    </Grid>
+
+                                    {provided.placeholder}
+                                </Box>
+                            </Paper>
+                        )}
+
+                    </Droppable>
+                </Grid>
+                <Grid item xs={6}>
+                    <Droppable droppableId="parent" type="group" >
+                        {(provided) => (
+                            <Paper elevation={3} style={{ padding: 20, textAlign: "center" }}>
+
+                                <Box ref={provided.innerRef} {...provided.droppableProps} sx={{ padding: 2, minHeight: 400, marginBottom: 2 }}>
+                                    <Typography variant="h5">Managers</Typography>
+
+                                    <Droppable droppableId="new-group-zone" type="item">
                                         {(provided) => (
-                                            <Paper
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                {...provided.dragHandleProps}
-                                                sx={{
-                                                    padding: 1,
-                                                    margin: "8px 0",
-                                                    backgroundColor: "white",
-                                                    boxShadow: 2,
-                                                    cursor: "grab",
-                                                }}
-                                            >
-                                                <EmployeeCard employee={employee} />
-                                            </Paper>
+                                            <Box ref={provided.innerRef} {...provided.droppableProps} sx={{ padding: 2, border: "2px dashed red", minHeight: 80, margin: 10, backgroundColor: "#f8d7da" }}>
+                                                <Typography variant="subtitle1">Drop an employee here to promote him as a manager</Typography>
+                                                {provided.placeholder}
+                                            </Box>
                                         )}
-                                    </Draggable>
-                                ))}
-                                {provided.placeholder}
+                                    </Droppable>
+
+                                    {groups.map(group => (
+                                        <Droppable key={group.id} droppableId={group.id.toString()} type="item">
+                                            {(provided) => (
+                                                <Box ref={provided.innerRef} {...provided.droppableProps} sx={{ padding: 2, border: "1px dashed gray",  minHeight: 100, margin: 10 }}>
+                                                    <Typography variant="subtitle1">{group.name} - {group.title}</Typography>
+                                                    {group.employees.map((child, index) => (
+                                                        <Draggable key={child.id} draggableId={child.id.toString()} index={index}>
+                                                            {(provided) => (
+                                                                <Box ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} >
+                                                                    <EmployeeCard onDelete={(employeeId: number)=>{unAssign(employeeId)}}  key={child.id} employee={child}/>
+                                                                </Box>
+                                                            )}
+                                                        </Draggable>
+                                                    ))}
+                                                    {provided.placeholder}
+                                                </Box>
+                                            )}
+                                        </Droppable>
+                                    ))}
+
+                                    {provided.placeholder}
+                                </Box>
                             </Paper>
                         )}
                     </Droppable>
-                ))}
-            </Box>
+                </Grid>
+            </Grid>
+
         </DragDropContext>
     );
 };

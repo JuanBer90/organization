@@ -1,30 +1,39 @@
-import React from "react";
-import { Card, CardContent, Typography } from "@mui/material";
-import { Employee } from "../hooks/useEmployees";
-
-interface EmployeeCardProps {
-    employee: Employee;
-}
-
-const defaultEmployee: Employee = {
-    id: 0,
-    name: "Peter",
-    title: "Designer",
-    manager_id: null
-};
-
-
-const EmployeeCard: React.FC<{ employee?: Employee }> = ({ employee = defaultEmployee }) => {
-
+import { Box, Typography, IconButton } from "@mui/material";
+// @ts-ignore
+const EmployeeCard = ({ employee, onDelete }) => {
     return (
-        <Card sx={{ width: 200, margin: 1, textAlign: "center" }}>
-            <CardContent>
-                <Typography variant="h6">{employee.name}</Typography>
-                <Typography variant="body2" color="textSecondary">
-                    {employee.title}
-                </Typography>
-            </CardContent>
-        </Card>
+        <Box
+            sx={{
+                margin: 1,
+                textAlign: "center",
+                position: "relative", // Necesario para posicionar el ícono
+                padding: 2,
+                border: "1px solid #ddd",
+                borderRadius: 2,
+                boxShadow: 2,
+                backgroundColor: "white",
+            }}
+        >
+            {/* Botón de eliminar en la esquina superior derecha */}
+            <IconButton
+                size="small"
+                onClick={() => onDelete(employee.id)}
+                sx={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                }}
+            >
+                x
+                {/*<DeleteIcon fontSize="small" />*/}
+            </IconButton>
+
+            {/* Contenido */}
+            <Typography variant="h6">#{employee.id} - {employee.name}</Typography>
+            <Typography variant="body2" color="textSecondary">
+                {employee.title}
+            </Typography>
+        </Box>
     );
 };
 

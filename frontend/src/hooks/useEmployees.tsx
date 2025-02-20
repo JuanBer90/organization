@@ -1,17 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import {fetchEmployees} from "../api"
 
-export interface Employee {
+
+
+interface BaseEmployee {
     id: number;
     name: string;
     title: string;
     manager_id: number | null;
 }
 
-const fetchEmployees = async (): Promise<Employee[]> => {
-    const { data } = await axios.get<Employee[]>("http://127.0.0.1:8000/api/employees");
-    return data;
-};
+export interface Employee extends BaseEmployee {}
+
+export interface Manager extends BaseEmployee {
+    employees: Employee[];
+}
+
 
 export const useEmployees = () => {
     return useQuery({ queryKey: ["employees"], queryFn: fetchEmployees });

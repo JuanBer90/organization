@@ -96,7 +96,7 @@ def delete_employee(employee_id: int, db: Session = Depends(get_db)):
     db.delete(employee)
     db.commit()
 
-    return JSONResponse(status_code=404, content={"message": "Employee deleted successfully"})
+    return dict(status_code=204, content={"message": "Employee deleted successfully"})
 
 
 def update_manager(employee_id: int, update: EmployeeUpdate, db: Session = Depends(get_db)):

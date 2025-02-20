@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3000
 
 # Ejecuta TypeScript y luego ejecuta la aplicación con Node.js
-CMD ["npm", "run", "build", "&&", "node", "dist/index.js"]
+CMD ["npm", "run", "dev"]

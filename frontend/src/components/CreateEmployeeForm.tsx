@@ -46,7 +46,7 @@ const CreateEmployeeForm: React.FC = () => {
 
     return (
         <Box sx={{ maxWidth: 400, margin: "auto", padding: 2 }}>
-            <Typography variant="h6" sx={{ textAlign: "center", marginBottom: 2 }}>
+            <Typography variant="h4" sx={{ flexGrow: 1, textAlign: "center" }}>
                 Create New Employee
             </Typography>
 
@@ -69,8 +69,8 @@ const CreateEmployeeForm: React.FC = () => {
                     onChange={(e) => setTitle(e.target.value)}
                     sx={{ marginBottom: 2 }}
                 />
-                <Button type="submit" variant="contained" fullWidth disabled={mutation.isLoading}>
-                    {!mutation.isLoading ? "Create Employee" : <CircularProgress size={24}/>}
+                <Button type="submit" variant="contained" fullWidth >
+                   "Create Employee"
                 </Button>
             </form>
         </Box>
